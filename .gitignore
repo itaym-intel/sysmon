@@ -1,1 +1,42 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled binaries
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# Logs
+*.log
+sysmon.log
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Docs
 sysmon.md
+
+# Scripts
+build_and_test.sh
+build_and_test.ps1

@@ -1,0 +1,42 @@
+# Test configuration for SysMon
+version: "1.0"
+update_interval: 1
+history_size: 10
+
+cpu:
+  enabled: true
+  thresholds:
+    warning: 70.0
+    critical: 90.0
+  show_per_core: false
+
+memory:
+  enabled: true
+  thresholds:
+    warning: 80.0
+    critical: 95.0
+  show_swap: false
+
+disk:
+  enabled: true
+  thresholds:
+    warning: 75.0
+    critical: 90.0
+  mount_points:
+    - path: "/"
+      label: "Root"
+
+network:
+  enabled: false
+
+display:
+  color_scheme: "mono"
+  refresh_rate: 1
+  show_graphs: false
+  graph_height: 5
+
+alerts:
+  enabled: true
+  beep_on_critical: false
+  log_to_file: false
+  log_path: ""
