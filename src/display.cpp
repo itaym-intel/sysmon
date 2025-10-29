@@ -284,14 +284,17 @@ void Display::render(const CpuMetrics& cpu,
                     const std::vector<NetworkMetrics>& network,
                     const std::vector<Alert>& active_alerts,
                     const std::deque<double>& cpu_history,
-                    const std::deque<double>& memory_history)
+                    const std::deque<double>& memory_history,
+                    const ThresholdConfig& cpu_thresholds,
+                    const ThresholdConfig& memory_thresholds,
+                    const ThresholdConfig& disk_thresholds)
 {
     clear_screen();
     
     render_header();
-    render_cpu(cpu, {70.0, 90.0});  // These should come from config
-    render_memory(memory, {80.0, 95.0});
-    render_disks(disks, {75.0, 90.0});
+    render_cpu(cpu, cpu_thresholds);
+    render_memory(memory, memory_thresholds);
+    render_disks(disks, disk_thresholds);
     
     if (!network.empty()) {
         render_network(network);

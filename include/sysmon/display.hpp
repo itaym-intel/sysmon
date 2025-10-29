@@ -19,7 +19,10 @@ public:
                 const std::vector<NetworkMetrics>& network,
                 const std::vector<Alert>& active_alerts,
                 const std::deque<double>& cpu_history,
-                const std::deque<double>& memory_history);
+                const std::deque<double>& memory_history,
+                const ThresholdConfig& cpu_thresholds,
+                const ThresholdConfig& memory_thresholds,
+                const ThresholdConfig& disk_thresholds);
     
     // Update configuration (for hot-reload)
     void update_config(const DisplayConfig& config);

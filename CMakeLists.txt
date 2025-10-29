@@ -15,6 +15,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Option 1: Typiconf as subdirectory
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../typiconf/CMakeLists.txt")
     message(STATUS "Found Typiconf in parent directory")
+    # Enable YAML support in Typiconf before adding it
+    set(TYPICONF_ENABLE_YAML ON CACHE BOOL "Enable YAML support" FORCE)
+    set(TYPICONF_BUILD_TESTS OFF CACHE BOOL "Build Typiconf tests" FORCE)
+    set(TYPICONF_BUILD_EXAMPLES OFF CACHE BOOL "Build Typiconf examples" FORCE)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../typiconf ${CMAKE_BINARY_DIR}/typiconf)
     set(TYPICONF_FOUND TRUE)
     set(TYPICONF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../typiconf/include)
@@ -30,9 +34,7 @@ endif()
 
 # Option 3: FetchContent (download from GitHub)
 if(NOT TYPICONF_FOUND)
-    message(STATUS "Typiconf not found - using built-in config parser")
-    # SysMon has its own config parser, so Typiconf is optional
-    set(TYPICONF_INCLUDE_DIR "")
+    message(FATAL_ERROR "Typiconf not found! Please ensure typiconf is in the parent directory.")
 endif()
 
 # ============================================
@@ -69,14 +71,15 @@ target_include_directories(sysmon PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# Add Typiconf include directory if found
-if(TYPICONF_INCLUDE_DIR)
-    target_include_directories(sysmon PRIVATE ${TYPICONF_INCLUDE_DIR})
-endif()
+# Add Typiconf include directory
+target_include_directories(sysmon PRIVATE ${TYPICONF_INCLUDE_DIR})
 
-target_link_libraries(sysmon PRIVATE
-    ${PLATFORM_LIBS}
-)
+# Link Typiconf library if it's a target
+if(TARGET typiconf)
+    target_link_libraries(sysmon PRIVATE typiconf ${PLATFORM_LIBS})
+else()
+    target_link_libraries(sysmon PRIVATE ${PLATFORM_LIBS})
+endif()
 
 target_compile_definitions(sysmon PRIVATE
     ${PLATFORM_COMPILE_DEFS}
