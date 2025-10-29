@@ -1,0 +1,54 @@
+# SysMon Configuration - Production Server Profile
+version: "1.0"
+
+# Monitoring intervals - More frequent
+update_interval: 5
+history_size: 120
+
+# CPU Monitoring - Strict thresholds
+cpu:
+  enabled: true
+  thresholds:
+    warning: 60.0
+    critical: 85.0
+  show_per_core: false
+
+# Memory Monitoring - Strict thresholds
+memory:
+  enabled: true
+  thresholds:
+    warning: 75.0
+    critical: 90.0
+  show_swap: true
+
+# Disk Monitoring - Critical for servers
+disk:
+  enabled: true
+  thresholds:
+    warning: 70.0
+    critical: 85.0
+  mount_points:
+    - path: "/"
+      label: "Root"
+    - path: "/var"
+      label: "Var"
+    - path: "/home"
+      label: "Home"
+
+# Network Monitoring
+network:
+  enabled: false
+
+# Display Settings
+display:
+  color_scheme: "default"
+  refresh_rate: 2
+  show_graphs: false
+  graph_height: 10
+
+# Alerts - More aggressive
+alerts:
+  enabled: true
+  beep_on_critical: true
+  log_to_file: true
+  log_path: "/var/log/sysmon.log"

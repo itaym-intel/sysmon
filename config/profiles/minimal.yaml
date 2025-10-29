@@ -1,0 +1,52 @@
+# SysMon Configuration - Minimal Monitoring
+version: "1.0"
+
+# Monitoring intervals
+update_interval: 5
+history_size: 20
+
+# CPU Monitoring
+cpu:
+  enabled: true
+  thresholds:
+    warning: 85.0
+    critical: 95.0
+  show_per_core: false
+
+# Memory Monitoring
+memory:
+  enabled: true
+  thresholds:
+    warning: 90.0
+    critical: 98.0
+  show_swap: false
+
+# Disk Monitoring
+disk:
+  enabled: true
+  thresholds:
+    warning: 85.0
+    critical: 95.0
+  mount_points:
+    - path: "C:\\"
+      label: "System"
+    - path: "/"
+      label: "Root"
+
+# Network Monitoring
+network:
+  enabled: false
+
+# Display Settings
+display:
+  color_scheme: "mono"
+  refresh_rate: 2
+  show_graphs: false
+  graph_height: 5
+
+# Alerts
+alerts:
+  enabled: true
+  beep_on_critical: false
+  log_to_file: false
+  log_path: ""

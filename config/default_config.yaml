@@ -1,0 +1,54 @@
+# SysMon Configuration File
+version: "1.0"
+
+# Monitoring intervals (in seconds)
+update_interval: 2
+history_size: 30
+
+# CPU Monitoring
+cpu:
+  enabled: true
+  thresholds:
+    warning: 70.0
+    critical: 90.0
+  show_per_core: true
+
+# Memory Monitoring
+memory:
+  enabled: true
+  thresholds:
+    warning: 80.0
+    critical: 95.0
+  show_swap: true
+
+# Disk Monitoring
+disk:
+  enabled: true
+  thresholds:
+    warning: 75.0
+    critical: 90.0
+  mount_points:
+    - path: "C:\\"
+      label: "System"
+    - path: "/"
+      label: "Root"
+
+# Network Monitoring
+network:
+  enabled: false
+  upload_mbps: 10.0
+  download_mbps: 50.0
+
+# Display Settings
+display:
+  color_scheme: "default"
+  refresh_rate: 1
+  show_graphs: true
+  graph_height: 10
+
+# Alerts
+alerts:
+  enabled: true
+  beep_on_critical: false
+  log_to_file: true
+  log_path: "./sysmon.log"
