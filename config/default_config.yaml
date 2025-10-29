@@ -2,7 +2,7 @@
 version: "1.0"
 
 # Monitoring intervals (in seconds)
-update_interval: 2
+update_interval: 10
 history_size: 30
 
 # CPU Monitoring
@@ -35,7 +35,7 @@ disk:
 
 # Network Monitoring
 network:
-  enabled: false
+  enabled: true
   upload_mbps: 10.0
   download_mbps: 50.0
 
