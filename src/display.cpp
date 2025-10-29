@@ -126,15 +126,22 @@ std::string Display::create_graph(const std::deque<double>& data, int height) {
 }
 
 void Display::render_header() {
+    const int box_width = 60;
+    const std::string title = "SYSMON";
+    const int padding = (box_width - title.length()) / 2;
+    
     std::cout << "\u2554";
-    for (int i = 0; i < 60; ++i) std::cout << "\u2550";
+    for (int i = 0; i < box_width; ++i) std::cout << "\u2550";
     std::cout << "\u2557\n";
     
-    std::cout << "\u2551" << std::setw(30) << " " << "SYSMON - System Monitor v1.0"
-              << std::setw(3) << " " << "\u2551\n";
+    std::cout << "\u2551";
+    for (int i = 0; i < padding; ++i) std::cout << " ";
+    std::cout << title;
+    for (int i = 0; i < box_width - padding - title.length(); ++i) std::cout << " ";
+    std::cout << "\u2551\n";
     
     std::cout << "\u255A";
-    for (int i = 0; i < 60; ++i) std::cout << "\u2550";
+    for (int i = 0; i < box_width; ++i) std::cout << "\u2550";
     std::cout << "\u255D\n\n";
 }
 
@@ -206,6 +213,29 @@ void Display::render_disks(const std::vector<DiskMetrics>& disks, const Threshol
     std::cout << "\n";
 }
 
+void Display::render_network(const std::vector<NetworkMetrics>& network) {
+    std::cout << "[Network]\n";
+    
+    for (const auto& net : network) {
+        std::cout << "  " << std::setw(20) << std::left << net.interface_name;
+        
+        // Show download speed
+        std::cout << "     ↓" << std::setw(8) << std::right << std::fixed << std::setprecision(2) 
+                  << net.download_mbps << " Mbps";
+        
+        // Show upload speed
+        std::cout << "  ↑" << std::setw(8) << std::right << std::fixed << std::setprecision(2) 
+                  << net.upload_mbps << " Mbps";
+        
+        // Show total bytes
+        std::cout << "  (RX: " << format_bytes(net.bytes_received) 
+                  << ", TX: " << format_bytes(net.bytes_sent) << ")";
+        
+        std::cout << "\n";
+    }
+    std::cout << "\n";
+}
+
 void Display::render_alerts(const std::vector<Alert>& alerts) {
     std::cout << "[Alerts - Last " << std::min(5, static_cast<int>(alerts.size())) << "]\n";
     
@@ -251,6 +281,7 @@ void Display::render_footer() {
 void Display::render(const CpuMetrics& cpu,
                     const MemoryMetrics& memory,
                     const std::vector<DiskMetrics>& disks,
+                    const std::vector<NetworkMetrics>& network,
                     const std::vector<Alert>& active_alerts,
                     const std::deque<double>& cpu_history,
                     const std::deque<double>& memory_history)
@@ -261,6 +292,11 @@ void Display::render(const CpuMetrics& cpu,
     render_cpu(cpu, {70.0, 90.0});  // These should come from config
     render_memory(memory, {80.0, 95.0});
     render_disks(disks, {75.0, 90.0});
+    
+    if (!network.empty()) {
+        render_network(network);
+    }
+    
     render_alerts(active_alerts);
     render_history(cpu_history, memory_history);
     render_footer();

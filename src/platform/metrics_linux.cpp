@@ -118,9 +118,53 @@ public:
     }
     
     std::vector<NetworkMetrics> collect_network(const std::vector<std::string>& interfaces) override {
-        // Network metrics would parse /proc/net/dev
-        // For now, return empty vector
-        return {};
+        std::vector<NetworkMetrics> network_metrics;
+        std::ifstream net_file("/proc/net/dev");
+        std::string line;
+        
+        // Skip header lines
+        std::getline(net_file, line);
+        std::getline(net_file, line);
+        
+        while (std::getline(net_file, line)) {
+            std::istringstream iss(line);
+            std::string if_name;
+            uint64_t rx_bytes, rx_packets, rx_errs, rx_drop;
+            uint64_t tx_bytes, tx_packets, tx_errs, tx_drop;
+            
+            // Parse interface name (format: "  eth0:")
+            iss >> if_name;
+            if_name.erase(if_name.find(':'));
+            
+            // Skip loopback
+            if (if_name == "lo") continue;
+            
+            // Parse statistics
+            iss >> rx_bytes >> rx_packets >> rx_errs >> rx_drop;
+            iss.ignore(256, ' '); // Skip remaining RX fields
+            iss >> tx_bytes >> tx_packets >> tx_errs >> tx_drop;
+            
+            // Filter by requested interfaces if specified
+            if (!interfaces.empty()) {
+                bool found = false;
+                for (const auto& req_if : interfaces) {
+                    if (if_name == req_if || if_name.find(req_if) != std::string::npos) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) continue;
+            }
+            
+            NetworkMetrics net;
+            net.interface_name = if_name;
+            net.bytes_received = rx_bytes;
+            net.bytes_sent = tx_bytes;
+            
+            network_metrics.push_back(net);
+        }
+        
+        return network_metrics;
     }
     
 private:

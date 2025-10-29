@@ -1,12 +1,24 @@
 #include "sysmon/metrics_collector.hpp"
+
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600  // Windows Vista or later for GetIfTable2
+#endif
+
+// winsock2.h MUST be included before windows.h to avoid conflicts
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <psapi.h>
 #include <pdh.h>
 #include <pdhmsg.h>
+#include <iphlpapi.h>
+#include <netioapi.h>
 #include <iostream>
 #include <thread>
 
 #pragma comment(lib, "pdh.lib")
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 namespace sysmon {
 
@@ -107,9 +119,59 @@ public:
     }
     
     std::vector<NetworkMetrics> collect_network(const std::vector<std::string>& interfaces) override {
-        // Network metrics collection on Windows would require more complex WMI or IP Helper API
-        // For now, return empty vector
-        return {};
+        std::vector<NetworkMetrics> network_metrics;
+        
+        PMIB_IF_TABLE2 if_table = nullptr;
+        
+        DWORD result = GetIfTable2(&if_table);
+        if (result != NO_ERROR) {
+            return network_metrics;
+        }
+        
+        for (ULONG i = 0; i < if_table->NumEntries; i++) {
+            MIB_IF_ROW2& row = if_table->Table[i];
+            
+            // Skip loopback, non-operational, and tunnel interfaces
+            if (row.Type == IF_TYPE_SOFTWARE_LOOPBACK || 
+                row.Type == IF_TYPE_TUNNEL ||
+                row.OperStatus != IfOperStatusUp) {
+                continue;
+            }
+            
+            // Only include physical network adapters (Ethernet, WiFi, etc.)
+            // Skip if it's a filter/miniport without a real physical adapter
+            if (row.InterfaceAndOperStatusFlags.FilterInterface || 
+                row.InterfaceAndOperStatusFlags.NotMediaConnected) {
+                continue;
+            }
+            
+            // Convert wide string to narrow string
+            char interface_name[256];
+            WideCharToMultiByte(CP_UTF8, 0, row.Alias, -1, interface_name, sizeof(interface_name), nullptr, nullptr);
+            std::string if_name(interface_name);
+            
+            // If specific interfaces requested, check if this one matches
+            if (!interfaces.empty()) {
+                bool found = false;
+                for (const auto& req_if : interfaces) {
+                    if (if_name.find(req_if) != std::string::npos) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) continue;
+            }
+            
+            NetworkMetrics net;
+            net.interface_name = if_name;
+            net.bytes_sent = row.OutOctets;
+            net.bytes_received = row.InOctets;
+            
+            network_metrics.push_back(net);
+        }
+        
+        FreeMibTable(if_table);
+        return network_metrics;
     }
     
 private:

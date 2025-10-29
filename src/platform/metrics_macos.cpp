@@ -3,6 +3,10 @@
 #include <mach/mach_host.h>
 #include <sys/sysctl.h>
 #include <sys/mount.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <net/route.h>
 #include <vector>
 
 namespace sysmon {
@@ -107,9 +111,58 @@ public:
     }
     
     std::vector<NetworkMetrics> collect_network(const std::vector<std::string>& interfaces) override {
-        // Network metrics would require sysctl with NET_RT_IFLIST
-        // For now, return empty vector
-        return {};
+        std::vector<NetworkMetrics> network_metrics;
+        
+        int mib[] = {CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0};
+        size_t len;
+        
+        if (sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0) {
+            return network_metrics;
+        }
+        
+        std::vector<char> buf(len);
+        if (sysctl(mib, 6, buf.data(), &len, nullptr, 0) < 0) {
+            return network_metrics;
+        }
+        
+        char* lim = buf.data() + len;
+        char* next = buf.data();
+        
+        while (next < lim) {
+            struct if_msghdr* ifm = reinterpret_cast<struct if_msghdr*>(next);
+            next += ifm->ifm_msglen;
+            
+            if (ifm->ifm_type != RTM_IFINFO2) continue;
+            
+            struct if_msghdr2* ifm2 = reinterpret_cast<struct if_msghdr2*>(ifm);
+            struct sockaddr_dl* sdl = reinterpret_cast<struct sockaddr_dl*>(ifm + 1);
+            
+            std::string if_name(sdl->sdl_data, sdl->sdl_nlen);
+            
+            // Skip loopback
+            if (if_name == "lo0") continue;
+            
+            // Filter by requested interfaces if specified
+            if (!interfaces.empty()) {
+                bool found = false;
+                for (const auto& req_if : interfaces) {
+                    if (if_name == req_if || if_name.find(req_if) != std::string::npos) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) continue;
+            }
+            
+            NetworkMetrics net;
+            net.interface_name = if_name;
+            net.bytes_received = ifm2->ifm_data.ifi_ibytes;
+            net.bytes_sent = ifm2->ifm_data.ifi_obytes;
+            
+            network_metrics.push_back(net);
+        }
+        
+        return network_metrics;
     }
     
 private:

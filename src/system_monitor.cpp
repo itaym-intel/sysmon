@@ -2,6 +2,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <map>
 
 namespace sysmon {
 
@@ -73,6 +74,7 @@ void SystemMonitor::monitoring_loop() {
         CpuMetrics cpu_metrics;
         MemoryMetrics memory_metrics;
         std::vector<DiskMetrics> disk_metrics;
+        std::vector<NetworkMetrics> network_metrics;
         
         if (current_config.cpu.enabled) {
             cpu_metrics = metrics_collector_->collect_cpu();
@@ -90,6 +92,34 @@ void SystemMonitor::monitoring_loop() {
             // Apply labels
             for (size_t i = 0; i < disk_metrics.size() && i < current_config.disk.mount_points.size(); ++i) {
                 disk_metrics[i].label = current_config.disk.mount_points[i].label;
+            }
+        }
+        if (current_config.network.enabled) {
+            network_metrics = metrics_collector_->collect_network(current_config.network.interfaces);
+            
+            // Calculate bandwidth rates from previous samples
+            struct NetworkSample {
+                uint64_t bytes_received;
+                uint64_t bytes_sent;
+                std::chrono::steady_clock::time_point timestamp;
+            };
+            static std::map<std::string, NetworkSample> prev_samples;
+            auto now = std::chrono::steady_clock::now();
+            
+            for (auto& net : network_metrics) {
+                auto it = prev_samples.find(net.interface_name);
+                if (it != prev_samples.end()) {
+                    auto time_diff = std::chrono::duration<double>(now - it->second.timestamp).count();
+                    
+                    if (time_diff > 0) {
+                        double rx_bytes_diff = static_cast<double>(net.bytes_received - it->second.bytes_received);
+                        double tx_bytes_diff = static_cast<double>(net.bytes_sent - it->second.bytes_sent);
+                        
+                        net.download_mbps = (rx_bytes_diff * 8.0) / (time_diff * 1000000.0);
+                        net.upload_mbps = (tx_bytes_diff * 8.0) / (time_diff * 1000000.0);
+                    }
+                }
+                prev_samples[net.interface_name] = {net.bytes_received, net.bytes_sent, now};
             }
         }
         
@@ -125,7 +155,7 @@ void SystemMonitor::monitoring_loop() {
         }
         
         // Render display
-        display_->render(cpu_metrics, memory_metrics, disk_metrics, active_alerts_, 
+        display_->render(cpu_metrics, memory_metrics, disk_metrics, network_metrics, active_alerts_, 
                         cpu_history_, memory_history_);
         
         // Sleep until next update
