@@ -16,6 +16,7 @@ public:
     void render(const CpuMetrics& cpu,
                 const MemoryMetrics& memory,
                 const std::vector<DiskMetrics>& disks,
+                const std::vector<NetworkMetrics>& network,
                 const std::vector<Alert>& active_alerts,
                 const std::deque<double>& cpu_history,
                 const std::deque<double>& memory_history);
@@ -28,6 +29,7 @@ private:
     void render_cpu(const CpuMetrics& cpu, const ThresholdConfig& thresholds);
     void render_memory(const MemoryMetrics& memory, const ThresholdConfig& thresholds);
     void render_disks(const std::vector<DiskMetrics>& disks, const ThresholdConfig& thresholds);
+    void render_network(const std::vector<NetworkMetrics>& network);
     void render_alerts(const std::vector<Alert>& alerts);
     void render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history);
     void render_footer();
