@@ -1,5 +1,6 @@
 #pragma once
 
+#include <typiconf/typiconf.hpp>
 #include <string>
 #include <vector>
 #include <optional>
@@ -17,30 +18,59 @@ struct ThresholdConfig {
                critical >= 0.0 && critical <= 100.0 &&
                warning < critical;
     }
+    
+    TYPICONF_DEFINE_FIELDS(ThresholdConfig,
+        TYPICONF_FIELD(warning),
+        TYPICONF_FIELD(critical)
+    )
 };
 
 struct CpuConfig {
     bool enabled = true;
     ThresholdConfig thresholds;
     bool show_per_core = true;
+    
+    TYPICONF_DEFINE_FIELDS(CpuConfig,
+        TYPICONF_FIELD(enabled),
+        TYPICONF_FIELD(thresholds),
+        TYPICONF_FIELD(show_per_core)
+    )
 };
 
 struct MemoryConfig {
     bool enabled = true;
     ThresholdConfig thresholds;
     bool show_swap = true;
+    
+    TYPICONF_DEFINE_FIELDS(MemoryConfig,
+        TYPICONF_FIELD(enabled),
+        TYPICONF_FIELD(thresholds),
+        TYPICONF_FIELD(show_swap)
+    )
 };
 
 struct MountPointConfig {
     std::string path;
     std::string label;
-    std::optional<ThresholdConfig> thresholds;
+    ThresholdConfig thresholds;  // Now required, not optional
+    
+    TYPICONF_DEFINE_FIELDS(MountPointConfig,
+        TYPICONF_FIELD(path),
+        TYPICONF_FIELD(label),
+        TYPICONF_FIELD(thresholds)
+    )
 };
 
 struct DiskConfig {
     bool enabled = true;
     ThresholdConfig thresholds;
     std::vector<MountPointConfig> mount_points;
+    
+    TYPICONF_DEFINE_FIELDS(DiskConfig,
+        TYPICONF_FIELD(enabled),
+        TYPICONF_FIELD(thresholds),
+        TYPICONF_FIELD(mount_points)
+    )
 };
 
 struct NetworkConfig {
@@ -48,6 +78,13 @@ struct NetworkConfig {
     double upload_mbps = 10.0;
     double download_mbps = 50.0;
     std::vector<std::string> interfaces;
+    
+    TYPICONF_DEFINE_FIELDS(NetworkConfig,
+        TYPICONF_FIELD(enabled),
+        TYPICONF_FIELD(upload_mbps),
+        TYPICONF_FIELD(download_mbps),
+        TYPICONF_FIELD(interfaces)
+    )
 };
 
 struct DisplayConfig {
@@ -55,6 +92,13 @@ struct DisplayConfig {
     int refresh_rate = 1;
     bool show_graphs = true;
     int graph_height = 10;
+    
+    TYPICONF_DEFINE_FIELDS(DisplayConfig,
+        TYPICONF_FIELD(color_scheme),
+        TYPICONF_FIELD(refresh_rate),
+        TYPICONF_FIELD(show_graphs),
+        TYPICONF_FIELD(graph_height)
+    )
 };
 
 struct AlertConfig {
@@ -62,6 +106,13 @@ struct AlertConfig {
     bool beep_on_critical = false;
     bool log_to_file = true;
     std::string log_path = "./sysmon.log";
+    
+    TYPICONF_DEFINE_FIELDS(AlertConfig,
+        TYPICONF_FIELD(enabled),
+        TYPICONF_FIELD(beep_on_critical),
+        TYPICONF_FIELD(log_to_file),
+        TYPICONF_FIELD(log_path)
+    )
 };
 
 struct SysMonConfig {
@@ -76,6 +127,18 @@ struct SysMonConfig {
     AlertConfig alerts;
     
     bool validate() const;
+    
+    TYPICONF_DEFINE_FIELDS(SysMonConfig,
+        TYPICONF_FIELD(version),
+        TYPICONF_FIELD(update_interval),
+        TYPICONF_FIELD(history_size),
+        TYPICONF_FIELD(cpu),
+        TYPICONF_FIELD(memory),
+        TYPICONF_FIELD(disk),
+        TYPICONF_FIELD(network),
+        TYPICONF_FIELD(display),
+        TYPICONF_FIELD(alerts)
+    )
 };
 
 class ConfigManager {

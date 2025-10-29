@@ -1,5 +1,5 @@
 # SysMon Configuration File
-version: "1.0"
+version: v1.0
 
 # Monitoring intervals (in seconds)
 update_interval: 10
