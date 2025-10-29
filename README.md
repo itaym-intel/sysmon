@@ -1,16 +1,6 @@
 # sysmon
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![C++](https://img.shields.io/badge/C++-20-brightgreen)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
-
 **sysmon** is a real-time system monitor that displays CPU, memory, disk, and network statistics and custom alerts.
-
-### Prerequisites
-
-- CMake 3.20 or higher
-- C++20 compatible compiler (GCC 10+, Clang 11+, MSVC 2019+)
-- [Typiconf library](https://github.com/itaym-intel/typiconf) (automatically fetched)
 
 ### Build
 
