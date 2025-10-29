@@ -34,7 +34,22 @@ endif()
 
 # Option 3: FetchContent (download from GitHub)
 if(NOT TYPICONF_FOUND)
-    message(FATAL_ERROR "Typiconf not found! Please ensure typiconf is in the parent directory.")
+    message(STATUS "Typiconf not found locally, fetching from GitHub...")
+    include(FetchContent)
+    FetchContent_Declare(
+        typiconf
+        GIT_REPOSITORY https://github.com/itaym-intel/typiconf.git
+        GIT_TAG main  # or specify a specific tag/commit
+    )
+    
+    # Enable YAML support in Typiconf before fetching
+    set(TYPICONF_ENABLE_YAML ON CACHE BOOL "Enable YAML support" FORCE)
+    set(TYPICONF_BUILD_TESTS OFF CACHE BOOL "Build Typiconf tests" FORCE)
+    set(TYPICONF_BUILD_EXAMPLES OFF CACHE BOOL "Build Typiconf examples" FORCE)
+    
+    FetchContent_MakeAvailable(typiconf)
+    set(TYPICONF_FOUND TRUE)
+    set(TYPICONF_INCLUDE_DIR ${typiconf_SOURCE_DIR}/include)
 endif()
 
 # ============================================
