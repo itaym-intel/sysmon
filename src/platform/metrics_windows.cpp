@@ -31,8 +31,6 @@ public:
         PdhCollectQueryData(cpu_query_);
         
         // Get number of logical processors (threads, including hyperthreading)
-        // Note: This is NOT physical cores - e.g., a CPU with 14 physical cores
-        // and hyperthreading enabled will report ~20 logical processors
         SYSTEM_INFO sysInfo;
         GetSystemInfo(&sysInfo);
         core_count_ = sysInfo.dwNumberOfProcessors;
@@ -46,7 +44,6 @@ public:
             }
         }
         
-        // Initial collection
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         PdhCollectQueryData(cpu_query_);
     }
@@ -61,16 +58,15 @@ public:
         CpuMetrics metrics;
         metrics.core_count = core_count_;
         
-        // Collect new sample
         PdhCollectQueryData(cpu_query_);
         
-        // Get total CPU usage
+        // Total CPU usage
         PDH_FMT_COUNTERVALUE counterVal;
         if (PdhGetFormattedCounterValue(cpu_total_, PDH_FMT_DOUBLE, nullptr, &counterVal) == ERROR_SUCCESS) {
             metrics.overall_usage = counterVal.doubleValue;
         }
         
-        // Get per-core usage
+        // per (logical) core usage
         for (auto& counter : cpu_cores_) {
             if (PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, nullptr, &counterVal) == ERROR_SUCCESS) {
                 metrics.per_core_usage.push_back(counterVal.doubleValue);

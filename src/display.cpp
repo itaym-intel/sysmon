@@ -220,11 +220,11 @@ void Display::render_network(const std::vector<NetworkMetrics>& network) {
         std::cout << "  " << std::setw(20) << std::left << net.interface_name;
         
         // Show download speed
-        std::cout << "     ↓" << std::setw(8) << std::right << std::fixed << std::setprecision(2) 
+        std::cout << "     ↓" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
                   << net.download_mbps << " Mbps";
         
         // Show upload speed
-        std::cout << "  ↑" << std::setw(8) << std::right << std::fixed << std::setprecision(2) 
+        std::cout << "     ↑" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
                   << net.upload_mbps << " Mbps";
         
         // Show total bytes
