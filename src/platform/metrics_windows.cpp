@@ -30,12 +30,14 @@ public:
         PdhAddEnglishCounterW(cpu_query_, L"\\Processor(_Total)\\% Processor Time", 0, &cpu_total_);
         PdhCollectQueryData(cpu_query_);
         
-        // Get number of processors
+        // Get number of logical processors (threads, including hyperthreading)
+        // Note: This is NOT physical cores - e.g., a CPU with 14 physical cores
+        // and hyperthreading enabled will report ~20 logical processors
         SYSTEM_INFO sysInfo;
         GetSystemInfo(&sysInfo);
         core_count_ = sysInfo.dwNumberOfProcessors;
         
-        // Add per-core counters
+        // Add per-thread counters
         for (DWORD i = 0; i < core_count_; ++i) {
             PDH_HCOUNTER counter;
             std::wstring path = L"\\Processor(" + std::to_wstring(i) + L")\\% Processor Time";

@@ -20,21 +20,22 @@ public:
                 const std::vector<Alert>& active_alerts,
                 const std::deque<double>& cpu_history,
                 const std::deque<double>& memory_history,
-                const ThresholdConfig& cpu_thresholds,
+                const CpuConfig& cpu_config,
                 const ThresholdConfig& memory_thresholds,
-                const ThresholdConfig& disk_thresholds);
+                const ThresholdConfig& disk_thresholds,
+                int update_interval);
     
     // Update configuration (for hot-reload)
     void update_config(const DisplayConfig& config);
 
 private:
     void render_header();
-    void render_cpu(const CpuMetrics& cpu, const ThresholdConfig& thresholds);
+    void render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config);
     void render_memory(const MemoryMetrics& memory, const ThresholdConfig& thresholds);
     void render_disks(const std::vector<DiskMetrics>& disks, const ThresholdConfig& thresholds);
     void render_network(const std::vector<NetworkMetrics>& network);
     void render_alerts(const std::vector<Alert>& alerts);
-    void render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history);
+    void render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history, int update_interval);
     void render_footer();
     
     // Helper rendering functions

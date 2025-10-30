@@ -157,9 +157,10 @@ void SystemMonitor::monitoring_loop() {
         // Render display
         display_->render(cpu_metrics, memory_metrics, disk_metrics, network_metrics, active_alerts_, 
                         cpu_history_, memory_history_,
-                        current_config.cpu.thresholds,
+                        current_config.cpu,
                         current_config.memory.thresholds,
-                        current_config.disk.thresholds);
+                        current_config.disk.thresholds,
+                        current_config.update_interval);
         
         // Sleep until next update
         auto loop_end = std::chrono::steady_clock::now();

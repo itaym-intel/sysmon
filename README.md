@@ -93,7 +93,7 @@ vim config/default_config.yaml # then edit your config
 | `cpu.enabled` | bool | true | Enable CPU monitoring |
 | `cpu.thresholds.warning` | float | 70.0 | Warning threshold (%) |
 | `cpu.thresholds.critical` | float | 90.0 | Critical threshold (%) |
-| `cpu.show_per_core` | bool | true | Show per-core statistics |
+| `cpu.show_per_core` | bool | true | Show per-thread statistics (logical processors) |
 
 ### Memory Monitoring
 

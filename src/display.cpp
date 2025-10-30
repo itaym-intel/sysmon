@@ -145,8 +145,8 @@ void Display::render_header() {
     std::cout << "\u255D\n\n";
 }
 
-void Display::render_cpu(const CpuMetrics& cpu, const ThresholdConfig& thresholds) {
-    AlertLevel level = get_alert_level(cpu.overall_usage, thresholds);
+void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
+    AlertLevel level = get_alert_level(cpu.overall_usage, cpu_config.thresholds);
     
     std::cout << "[CPU]  ";
     std::cout << create_progress_bar(cpu.overall_usage, 20, level);
@@ -162,11 +162,11 @@ void Display::render_cpu(const CpuMetrics& cpu, const ThresholdConfig& threshold
     }
     std::cout << "\n";
     
-    // Per-core display
-    if (!cpu.per_core_usage.empty() && cpu.per_core_usage.size() <= 16) {
+    // Per-thread display (only if enabled and reasonable number of threads)
+    if (cpu_config.show_per_core && !cpu.per_core_usage.empty() && cpu.per_core_usage.size() <= 32) {
         for (size_t i = 0; i < cpu.per_core_usage.size(); ++i) {
-            AlertLevel core_level = get_alert_level(cpu.per_core_usage[i], thresholds);
-            std::cout << "  Core " << std::setw(2) << i << ": ";
+            AlertLevel core_level = get_alert_level(cpu.per_core_usage[i], cpu_config.thresholds);
+            std::cout << "  Thread " << std::setw(2) << i << ": ";
             std::cout << create_progress_bar(cpu.per_core_usage[i], 20, core_level);
             std::cout << "  " << std::setw(3) << static_cast<int>(cpu.per_core_usage[i]) << "%";
             if (core_level != AlertLevel::Normal) {
@@ -263,12 +263,13 @@ void Display::render_alerts(const std::vector<Alert>& alerts) {
     std::cout << "\n";
 }
 
-void Display::render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history) {
+void Display::render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history, int update_interval) {
     if (!config_.show_graphs || cpu_history.empty()) {
         return;
     }
     
-    std::cout << "[History - Last " << cpu_history.size() << "s]\n";
+    int total_seconds = cpu_history.size() * update_interval;
+    std::cout << "[History - Last " << total_seconds << "s]\n";
     std::cout << "CPU:  " << create_graph(cpu_history, config_.graph_height) << "\n";
     std::cout << "MEM:  " << create_graph(memory_history, config_.graph_height) << "\n";
     std::cout << "\n";
@@ -285,14 +286,15 @@ void Display::render(const CpuMetrics& cpu,
                     const std::vector<Alert>& active_alerts,
                     const std::deque<double>& cpu_history,
                     const std::deque<double>& memory_history,
-                    const ThresholdConfig& cpu_thresholds,
+                    const CpuConfig& cpu_config,
                     const ThresholdConfig& memory_thresholds,
-                    const ThresholdConfig& disk_thresholds)
+                    const ThresholdConfig& disk_thresholds,
+                    int update_interval)
 {
     clear_screen();
     
     render_header();
-    render_cpu(cpu, cpu_thresholds);
+    render_cpu(cpu, cpu_config);
     render_memory(memory, memory_thresholds);
     render_disks(disks, disk_thresholds);
     
@@ -301,7 +303,7 @@ void Display::render(const CpuMetrics& cpu,
     }
     
     render_alerts(active_alerts);
-    render_history(cpu_history, memory_history);
+    render_history(cpu_history, memory_history, update_interval);
     render_footer();
 }
 
