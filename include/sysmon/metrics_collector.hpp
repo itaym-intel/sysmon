@@ -9,8 +9,8 @@ namespace sysmon {
 
 struct CpuMetrics {
     double overall_usage = 0.0;              // 0-100%
-    std::vector<double> per_core_usage;      // Per-core percentages
-    uint32_t core_count = 0;
+    std::vector<double> per_core_usage;      // Per logical processor (thread) percentages
+    uint32_t core_count = 0;                 // Number of logical processors (threads)
 };
 
 struct MemoryMetrics {

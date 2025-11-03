@@ -30,12 +30,12 @@ public:
         PdhAddEnglishCounterW(cpu_query_, L"\\Processor(_Total)\\% Processor Time", 0, &cpu_total_);
         PdhCollectQueryData(cpu_query_);
         
-        // Get number of processors
+        // Get number of logical processors (threads, including hyperthreading)
         SYSTEM_INFO sysInfo;
         GetSystemInfo(&sysInfo);
         core_count_ = sysInfo.dwNumberOfProcessors;
         
-        // Add per-core counters
+        // Add per-thread counters
         for (DWORD i = 0; i < core_count_; ++i) {
             PDH_HCOUNTER counter;
             std::wstring path = L"\\Processor(" + std::to_wstring(i) + L")\\% Processor Time";
@@ -44,7 +44,6 @@ public:
             }
         }
         
-        // Initial collection
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         PdhCollectQueryData(cpu_query_);
     }
@@ -59,16 +58,15 @@ public:
         CpuMetrics metrics;
         metrics.core_count = core_count_;
         
-        // Collect new sample
         PdhCollectQueryData(cpu_query_);
         
-        // Get total CPU usage
+        // Total CPU usage
         PDH_FMT_COUNTERVALUE counterVal;
         if (PdhGetFormattedCounterValue(cpu_total_, PDH_FMT_DOUBLE, nullptr, &counterVal) == ERROR_SUCCESS) {
             metrics.overall_usage = counterVal.doubleValue;
         }
         
-        // Get per-core usage
+        // per (logical) core usage
         for (auto& counter : cpu_cores_) {
             if (PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, nullptr, &counterVal) == ERROR_SUCCESS) {
                 metrics.per_core_usage.push_back(counterVal.doubleValue);

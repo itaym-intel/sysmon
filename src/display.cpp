@@ -81,9 +81,9 @@ std::string format_bytes(uint64_t bytes) {
 
 std::string alert_icon(AlertLevel level) {
     switch (level) {
-        case AlertLevel::Normal:   return "\u2713";  // ✓
-        case AlertLevel::Warning:  return "\u26A0";  // ⚠
-        case AlertLevel::Critical: return "\U0001F534"; // 🔴
+        case AlertLevel::Normal:   return "✓";
+        case AlertLevel::Warning:  return "⚠";
+        case AlertLevel::Critical: return "🔴"; 
         default:                   return " ";
     }
 }
@@ -99,21 +99,33 @@ AlertLevel Display::get_alert_level(double value, const ThresholdConfig& thresho
 
 std::string Display::create_progress_bar(double percentage, int width, AlertLevel level) {
     int filled = static_cast<int>(percentage / 100.0 * width);
-    std::string bar = std::string(filled, '\u2588') + std::string(width - filled, '\u2591');
+    filled = std::max(0, std::min(width, filled));
+    
+    std::string filled_char = "█";  // U+2588 Full Block
+    std::string empty_char = "░";   // U+2591 Light Shade
+    
+    std::string bar;
+    for (int i = 0; i < filled; ++i) {
+        bar += filled_char;
+    }
+    for (int i = filled; i < width; ++i) {
+        bar += empty_char;
+    }
+    
     return colorize(bar, level);
 }
 
 std::string Display::create_graph(const std::deque<double>& data, int height) {
     if (data.empty()) {
-        return std::string(30, '\u2581');
+        return std::string(30, '▁');
     }
     
     // Find max value for scaling
     double max_val = *std::max_element(data.begin(), data.end());
     if (max_val == 0.0) max_val = 1.0;
     
-    // Unicode block characters for different heights
-    const char* blocks[] = {" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"};
+    // Unicode block characters for different heights (actual UTF-8 characters)
+    const char* blocks[] = {" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"};
     
     std::ostringstream oss;
     for (double val : data) {
@@ -130,23 +142,23 @@ void Display::render_header() {
     const std::string title = "SYSMON";
     const int padding = (box_width - title.length()) / 2;
     
-    std::cout << "\u2554";
-    for (int i = 0; i < box_width; ++i) std::cout << "\u2550";
-    std::cout << "\u2557\n";
+    std::cout << "╔";
+    for (int i = 0; i < box_width; ++i) std::cout << "═";
+    std::cout << "╗\n";
     
-    std::cout << "\u2551";
+    std::cout << "║";
     for (int i = 0; i < padding; ++i) std::cout << " ";
     std::cout << title;
     for (int i = 0; i < box_width - padding - title.length(); ++i) std::cout << " ";
-    std::cout << "\u2551\n";
+    std::cout << "║\n";
     
-    std::cout << "\u255A";
-    for (int i = 0; i < box_width; ++i) std::cout << "\u2550";
-    std::cout << "\u255D\n\n";
+    std::cout << "╚";
+    for (int i = 0; i < box_width; ++i) std::cout << "═";
+    std::cout << "╝\n\n";
 }
 
-void Display::render_cpu(const CpuMetrics& cpu, const ThresholdConfig& thresholds) {
-    AlertLevel level = get_alert_level(cpu.overall_usage, thresholds);
+void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
+    AlertLevel level = get_alert_level(cpu.overall_usage, cpu_config.thresholds);
     
     std::cout << "[CPU]  ";
     std::cout << create_progress_bar(cpu.overall_usage, 20, level);
@@ -162,11 +174,11 @@ void Display::render_cpu(const CpuMetrics& cpu, const ThresholdConfig& threshold
     }
     std::cout << "\n";
     
-    // Per-core display
-    if (!cpu.per_core_usage.empty() && cpu.per_core_usage.size() <= 16) {
+    // Per-thread display (only if enabled and reasonable number of threads)
+    if (cpu_config.show_per_core && !cpu.per_core_usage.empty() && cpu.per_core_usage.size() <= 32) {
         for (size_t i = 0; i < cpu.per_core_usage.size(); ++i) {
-            AlertLevel core_level = get_alert_level(cpu.per_core_usage[i], thresholds);
-            std::cout << "  Core " << std::setw(2) << i << ": ";
+            AlertLevel core_level = get_alert_level(cpu.per_core_usage[i], cpu_config.thresholds);
+            std::cout << "  Thread " << std::setw(2) << i << ": ";
             std::cout << create_progress_bar(cpu.per_core_usage[i], 20, core_level);
             std::cout << "  " << std::setw(3) << static_cast<int>(cpu.per_core_usage[i]) << "%";
             if (core_level != AlertLevel::Normal) {
@@ -220,11 +232,11 @@ void Display::render_network(const std::vector<NetworkMetrics>& network) {
         std::cout << "  " << std::setw(20) << std::left << net.interface_name;
         
         // Show download speed
-        std::cout << "     ↓" << std::setw(8) << std::right << std::fixed << std::setprecision(2) 
+        std::cout << "     ↓" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
                   << net.download_mbps << " Mbps";
         
         // Show upload speed
-        std::cout << "  ↑" << std::setw(8) << std::right << std::fixed << std::setprecision(2) 
+        std::cout << "     ↑" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
                   << net.upload_mbps << " Mbps";
         
         // Show total bytes
@@ -263,12 +275,13 @@ void Display::render_alerts(const std::vector<Alert>& alerts) {
     std::cout << "\n";
 }
 
-void Display::render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history) {
+void Display::render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history, int update_interval) {
     if (!config_.show_graphs || cpu_history.empty()) {
         return;
     }
     
-    std::cout << "[History - Last " << cpu_history.size() << "s]\n";
+    int total_seconds = cpu_history.size() * update_interval;
+    std::cout << "[History - Last " << total_seconds << "s]\n";
     std::cout << "CPU:  " << create_graph(cpu_history, config_.graph_height) << "\n";
     std::cout << "MEM:  " << create_graph(memory_history, config_.graph_height) << "\n";
     std::cout << "\n";
@@ -285,14 +298,15 @@ void Display::render(const CpuMetrics& cpu,
                     const std::vector<Alert>& active_alerts,
                     const std::deque<double>& cpu_history,
                     const std::deque<double>& memory_history,
-                    const ThresholdConfig& cpu_thresholds,
+                    const CpuConfig& cpu_config,
                     const ThresholdConfig& memory_thresholds,
-                    const ThresholdConfig& disk_thresholds)
+                    const ThresholdConfig& disk_thresholds,
+                    int update_interval)
 {
     clear_screen();
     
     render_header();
-    render_cpu(cpu, cpu_thresholds);
+    render_cpu(cpu, cpu_config);
     render_memory(memory, memory_thresholds);
     render_disks(disks, disk_thresholds);
     
@@ -301,7 +315,7 @@ void Display::render(const CpuMetrics& cpu,
     }
     
     render_alerts(active_alerts);
-    render_history(cpu_history, memory_history);
+    render_history(cpu_history, memory_history, update_interval);
     render_footer();
 }
 

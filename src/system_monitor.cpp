@@ -131,7 +131,6 @@ void SystemMonitor::monitoring_loop() {
             memory_history_.pop_front();
         }
         
-        // Check for alerts
         active_alerts_.clear();
         if (current_config.cpu.enabled) {
             auto cpu_alerts = alert_engine_->check_cpu(cpu_metrics, current_config.cpu);
@@ -146,7 +145,7 @@ void SystemMonitor::monitoring_loop() {
             active_alerts_.insert(active_alerts_.end(), disk_alerts.begin(), disk_alerts.end());
         }
         
-        // Log alerts
+        // Log
         for (const auto& alert : active_alerts_) {
             alert_engine_->log_alert(alert);
             if (alert.level == AlertLevel::Critical) {
@@ -154,14 +153,13 @@ void SystemMonitor::monitoring_loop() {
             }
         }
         
-        // Render display
         display_->render(cpu_metrics, memory_metrics, disk_metrics, network_metrics, active_alerts_, 
                         cpu_history_, memory_history_,
-                        current_config.cpu.thresholds,
+                        current_config.cpu,
                         current_config.memory.thresholds,
-                        current_config.disk.thresholds);
+                        current_config.disk.thresholds,
+                        current_config.update_interval);
         
-        // Sleep until next update
         auto loop_end = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(loop_end - loop_start);
         auto sleep_duration = std::chrono::seconds(current_config.update_interval) - elapsed;
