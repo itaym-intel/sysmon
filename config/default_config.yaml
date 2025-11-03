@@ -30,8 +30,6 @@ disk:
   mount_points:
     - path: "C:\\"
       label: "System"
-    - path: "/"
-      label: "Root"
 
 # Network Monitoring
 network:

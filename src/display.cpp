@@ -81,9 +81,9 @@ std::string format_bytes(uint64_t bytes) {
 
 std::string alert_icon(AlertLevel level) {
     switch (level) {
-        case AlertLevel::Normal:   return "\u2713";  // ✓
-        case AlertLevel::Warning:  return "\u26A0";  // ⚠
-        case AlertLevel::Critical: return "\U0001F534"; // 🔴
+        case AlertLevel::Normal:   return "✓";
+        case AlertLevel::Warning:  return "⚠";
+        case AlertLevel::Critical: return "🔴"; 
         default:                   return " ";
     }
 }
@@ -99,21 +99,33 @@ AlertLevel Display::get_alert_level(double value, const ThresholdConfig& thresho
 
 std::string Display::create_progress_bar(double percentage, int width, AlertLevel level) {
     int filled = static_cast<int>(percentage / 100.0 * width);
-    std::string bar = std::string(filled, '\u2588') + std::string(width - filled, '\u2591');
+    filled = std::max(0, std::min(width, filled));
+    
+    std::string filled_char = "█";  // U+2588 Full Block
+    std::string empty_char = "░";   // U+2591 Light Shade
+    
+    std::string bar;
+    for (int i = 0; i < filled; ++i) {
+        bar += filled_char;
+    }
+    for (int i = filled; i < width; ++i) {
+        bar += empty_char;
+    }
+    
     return colorize(bar, level);
 }
 
 std::string Display::create_graph(const std::deque<double>& data, int height) {
     if (data.empty()) {
-        return std::string(30, '\u2581');
+        return std::string(30, '▁');
     }
     
     // Find max value for scaling
     double max_val = *std::max_element(data.begin(), data.end());
     if (max_val == 0.0) max_val = 1.0;
     
-    // Unicode block characters for different heights
-    const char* blocks[] = {" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"};
+    // Unicode block characters for different heights (actual UTF-8 characters)
+    const char* blocks[] = {" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"};
     
     std::ostringstream oss;
     for (double val : data) {
@@ -130,19 +142,19 @@ void Display::render_header() {
     const std::string title = "SYSMON";
     const int padding = (box_width - title.length()) / 2;
     
-    std::cout << "\u2554";
-    for (int i = 0; i < box_width; ++i) std::cout << "\u2550";
-    std::cout << "\u2557\n";
+    std::cout << "╔";
+    for (int i = 0; i < box_width; ++i) std::cout << "═";
+    std::cout << "╗\n";
     
-    std::cout << "\u2551";
+    std::cout << "║";
     for (int i = 0; i < padding; ++i) std::cout << " ";
     std::cout << title;
     for (int i = 0; i < box_width - padding - title.length(); ++i) std::cout << " ";
-    std::cout << "\u2551\n";
+    std::cout << "║\n";
     
-    std::cout << "\u255A";
-    for (int i = 0; i < box_width; ++i) std::cout << "\u2550";
-    std::cout << "\u255D\n\n";
+    std::cout << "╚";
+    for (int i = 0; i < box_width; ++i) std::cout << "═";
+    std::cout << "╝\n\n";
 }
 
 void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
