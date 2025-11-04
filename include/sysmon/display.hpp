@@ -21,8 +21,9 @@ public:
                 const std::deque<double>& cpu_history,
                 const std::deque<double>& memory_history,
                 const CpuConfig& cpu_config,
-                const ThresholdConfig& memory_thresholds,
-                const ThresholdConfig& disk_thresholds,
+                const MemoryConfig& memory_config,
+                const DiskConfig& disk_config,
+                const NetworkConfig& network_config,
                 int update_interval);
     
     // Update configuration (for hot-reload)
@@ -31,9 +32,9 @@ public:
 private:
     void render_header();
     void render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config);
-    void render_memory(const MemoryMetrics& memory, const ThresholdConfig& thresholds);
-    void render_disks(const std::vector<DiskMetrics>& disks, const ThresholdConfig& thresholds);
-    void render_network(const std::vector<NetworkMetrics>& network);
+    void render_memory(const MemoryMetrics& memory, const MemoryConfig& memory_config);
+    void render_disks(const std::vector<DiskMetrics>& disks, const DiskConfig& disk_config);
+    void render_network(const std::vector<NetworkMetrics>& network, const NetworkConfig& network_config);
     void render_alerts(const std::vector<Alert>& alerts);
     void render_history(const std::deque<double>& cpu_history, const std::deque<double>& memory_history, int update_interval);
     void render_footer();

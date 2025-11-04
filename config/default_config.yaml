@@ -11,7 +11,8 @@ cpu:
   thresholds:
     warning: 70.0
     critical: 90.0
-  show_per_core: true
+  show_per_core: false
+  show_model_name: true
 
 # Memory Monitoring
 memory:
@@ -20,6 +21,7 @@ memory:
     warning: 80.0
     critical: 95.0
   show_swap: true
+  show_model_name: true
 
 # Disk Monitoring
 disk:
@@ -27,6 +29,7 @@ disk:
   thresholds:
     warning: 75.0
     critical: 90.0
+  show_model_name: true
   mount_points:
     - path: "C:\\"
       label: "System"
@@ -36,6 +39,7 @@ network:
   enabled: true
   upload_mbps: 10.0
   download_mbps: 50.0
+  show_model_name: true
 
 # Display Settings
 display:

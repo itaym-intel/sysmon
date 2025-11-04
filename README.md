@@ -94,6 +94,7 @@ vim config/default_config.yaml # then edit your config
 | `cpu.thresholds.warning` | float | 70.0 | Warning threshold (%) |
 | `cpu.thresholds.critical` | float | 90.0 | Critical threshold (%) |
 | `cpu.show_per_core` | bool | true | Show per-thread statistics (logical processors) |
+| `cpu.show_model_name` | bool | true | Display CPU model name |
 
 ### Memory Monitoring
 
@@ -103,15 +104,24 @@ vim config/default_config.yaml # then edit your config
 | `memory.thresholds.warning` | float | 80.0 | Warning threshold (%) |
 | `memory.thresholds.critical` | float | 95.0 | Critical threshold (%) |
 | `memory.show_swap` | bool | true | Show swap memory info |
+| `memory.show_model_name` | bool | true | Display memory model name |
 
 ### Disk Monitoring
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| `disk.show_model_name` | bool | true | Display disk model name |
 | `disk.enabled` | bool | true | Enable disk monitoring |
 | `disk.thresholds.warning` | float | 75.0 | Warning threshold (%) |
 | `disk.thresholds.critical` | float | 90.0 | Critical threshold (%) |
 | `disk.mount_points` | array | - | List of mount points to monitor |
+
+### Network Monitoring
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `network.enabled` | bool | false | Enable network monitoring |
+| `network.show_model_name` | bool | true | Display network adapter model name |
 
 ### Display Settings
 

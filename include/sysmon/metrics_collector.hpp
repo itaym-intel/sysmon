@@ -11,6 +11,7 @@ struct CpuMetrics {
     double overall_usage = 0.0;              // 0-100%
     std::vector<double> per_core_usage;      // Per logical processor (thread) percentages
     uint32_t core_count = 0;                 // Number of logical processors (threads)
+    std::string model_name;                  // CPU model name
 };
 
 struct MemoryMetrics {
@@ -21,6 +22,7 @@ struct MemoryMetrics {
     
     uint64_t swap_total_bytes = 0;
     uint64_t swap_used_bytes = 0;
+    std::string model_name;                  // Memory model/manufacturer
 };
 
 struct DiskMetrics {
@@ -29,6 +31,7 @@ struct DiskMetrics {
     uint64_t total_bytes = 0;
     uint64_t used_bytes = 0;
     double usage_percent = 0.0;
+    std::string model_name;                  // Disk model name
 };
 
 struct NetworkMetrics {
@@ -37,6 +40,7 @@ struct NetworkMetrics {
     uint64_t bytes_received = 0;
     double upload_mbps = 0.0;
     double download_mbps = 0.0;
+    std::string model_name;                  // Network adapter model
 };
 
 class MetricsCollector {

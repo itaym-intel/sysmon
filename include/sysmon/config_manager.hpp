@@ -29,11 +29,13 @@ struct CpuConfig {
     bool enabled = true;
     ThresholdConfig thresholds;
     bool show_per_core = true;
+    bool show_model_name = true;
     
     TYPICONF_DEFINE_FIELDS(CpuConfig,
         TYPICONF_FIELD(enabled),
         TYPICONF_FIELD(thresholds),
-        TYPICONF_FIELD(show_per_core)
+        TYPICONF_FIELD(show_per_core),
+        TYPICONF_FIELD(show_model_name)
     )
 };
 
@@ -41,11 +43,13 @@ struct MemoryConfig {
     bool enabled = true;
     ThresholdConfig thresholds;
     bool show_swap = true;
+    bool show_model_name = true;
     
     TYPICONF_DEFINE_FIELDS(MemoryConfig,
         TYPICONF_FIELD(enabled),
         TYPICONF_FIELD(thresholds),
-        TYPICONF_FIELD(show_swap)
+        TYPICONF_FIELD(show_swap),
+        TYPICONF_FIELD(show_model_name)
     )
 };
 
@@ -65,11 +69,13 @@ struct DiskConfig {
     bool enabled = true;
     ThresholdConfig thresholds;
     std::vector<MountPointConfig> mount_points;
+    bool show_model_name = true;
     
     TYPICONF_DEFINE_FIELDS(DiskConfig,
         TYPICONF_FIELD(enabled),
         TYPICONF_FIELD(thresholds),
-        TYPICONF_FIELD(mount_points)
+        TYPICONF_FIELD(mount_points),
+        TYPICONF_FIELD(show_model_name)
     )
 };
 
@@ -78,12 +84,14 @@ struct NetworkConfig {
     double upload_mbps = 10.0;
     double download_mbps = 50.0;
     std::vector<std::string> interfaces;
+    bool show_model_name = true;
     
     TYPICONF_DEFINE_FIELDS(NetworkConfig,
         TYPICONF_FIELD(enabled),
         TYPICONF_FIELD(upload_mbps),
         TYPICONF_FIELD(download_mbps),
-        TYPICONF_FIELD(interfaces)
+        TYPICONF_FIELD(interfaces),
+        TYPICONF_FIELD(show_model_name)
     )
 };
 

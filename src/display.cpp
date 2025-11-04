@@ -124,7 +124,6 @@ std::string Display::create_graph(const std::deque<double>& data, int height) {
     double max_val = *std::max_element(data.begin(), data.end());
     if (max_val == 0.0) max_val = 1.0;
     
-    // Unicode block characters for different heights (actual UTF-8 characters)
     const char* blocks[] = {" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"};
     
     std::ostringstream oss;
@@ -160,8 +159,12 @@ void Display::render_header() {
 void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
     AlertLevel level = get_alert_level(cpu.overall_usage, cpu_config.thresholds);
     
-    std::cout << "[CPU]  ";
-    std::cout << create_progress_bar(cpu.overall_usage, 20, level);
+    std::cout << "[CPU]";
+    if (cpu_config.show_model_name) {
+        std::cout << " " << cpu.model_name;
+    }
+    std::cout << "\n";
+    std::cout << "  " << create_progress_bar(cpu.overall_usage, 20, level);
     std::cout << "  " << colorize(std::to_string(static_cast<int>(cpu.overall_usage)) + "%", level);
     std::cout << "  " << alert_icon(level);
     
@@ -174,11 +177,11 @@ void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
     }
     std::cout << "\n";
     
-    // Per-thread display (only if enabled and reasonable number of threads)
+    // Per-core display (only if enabled and reasonable number of cores)
     if (cpu_config.show_per_core && !cpu.per_core_usage.empty() && cpu.per_core_usage.size() <= 32) {
         for (size_t i = 0; i < cpu.per_core_usage.size(); ++i) {
             AlertLevel core_level = get_alert_level(cpu.per_core_usage[i], cpu_config.thresholds);
-            std::cout << "  Thread " << std::setw(2) << i << ": ";
+            std::cout << "    Core " << std::setw(2) << i << ": ";
             std::cout << create_progress_bar(cpu.per_core_usage[i], 20, core_level);
             std::cout << "  " << std::setw(3) << static_cast<int>(cpu.per_core_usage[i]) << "%";
             if (core_level != AlertLevel::Normal) {
@@ -190,11 +193,15 @@ void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
     std::cout << "\n";
 }
 
-void Display::render_memory(const MemoryMetrics& memory, const ThresholdConfig& thresholds) {
-    AlertLevel level = get_alert_level(memory.usage_percent, thresholds);
+void Display::render_memory(const MemoryMetrics& memory, const MemoryConfig& memory_config) {
+    AlertLevel level = get_alert_level(memory.usage_percent, memory_config.thresholds);
     
-    std::cout << "[Memory]  ";
-    std::cout << create_progress_bar(memory.usage_percent, 20, level);
+    std::cout << "[Memory]";
+    if (memory_config.show_model_name) {
+        std::cout << " " << memory.model_name;
+    }
+    std::cout << "\n";
+    std::cout << "  " << create_progress_bar(memory.usage_percent, 20, level);
     std::cout << "  " << colorize(std::to_string(static_cast<int>(memory.usage_percent)) + "%", level);
     std::cout << " (" << format_bytes(memory.used_bytes) << " / " << format_bytes(memory.total_bytes) << ")";
     std::cout << "  " << alert_icon(level);
@@ -209,14 +216,18 @@ void Display::render_memory(const MemoryMetrics& memory, const ThresholdConfig& 
     std::cout << "\n\n";
 }
 
-void Display::render_disks(const std::vector<DiskMetrics>& disks, const ThresholdConfig& thresholds) {
+void Display::render_disks(const std::vector<DiskMetrics>& disks, const DiskConfig& disk_config) {
     std::cout << "[Disk]\n";
     
     for (const auto& disk : disks) {
-        AlertLevel level = get_alert_level(disk.usage_percent, thresholds);
+        AlertLevel level = get_alert_level(disk.usage_percent, disk_config.thresholds);
         
-        std::cout << "  " << std::setw(15) << std::left << (disk.label + " (" + disk.mount_point + ")");
-        std::cout << create_progress_bar(disk.usage_percent, 20, level);
+        std::cout << "  " << disk.label << " (" << disk.mount_point << ")";
+        if (disk_config.show_model_name) {
+            std::cout << " - " << disk.model_name;
+        }
+        std::cout << "\n";
+        std::cout << "  " << create_progress_bar(disk.usage_percent, 20, level);
         std::cout << "  " << std::setw(3) << std::right << static_cast<int>(disk.usage_percent) << "%";
         std::cout << " (" << format_bytes(disk.used_bytes) << " / " << format_bytes(disk.total_bytes) << ")";
         std::cout << "  " << alert_icon(level);
@@ -225,14 +236,19 @@ void Display::render_disks(const std::vector<DiskMetrics>& disks, const Threshol
     std::cout << "\n";
 }
 
-void Display::render_network(const std::vector<NetworkMetrics>& network) {
+void Display::render_network(const std::vector<NetworkMetrics>& network, const NetworkConfig& network_config) {
     std::cout << "[Network]\n";
     
     for (const auto& net : network) {
-        std::cout << "  " << std::setw(20) << std::left << net.interface_name;
+        std::cout << "  " << net.interface_name;
+        if (network_config.show_model_name) {
+            std::cout << " - " << net.model_name;
+        }
+        std::cout << "\n";
+        std::cout << "    ";
         
         // Show download speed
-        std::cout << "     ↓" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
+        std::cout << "↓" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
                   << net.download_mbps << " Mbps";
         
         // Show upload speed
@@ -299,19 +315,20 @@ void Display::render(const CpuMetrics& cpu,
                     const std::deque<double>& cpu_history,
                     const std::deque<double>& memory_history,
                     const CpuConfig& cpu_config,
-                    const ThresholdConfig& memory_thresholds,
-                    const ThresholdConfig& disk_thresholds,
+                    const MemoryConfig& memory_config,
+                    const DiskConfig& disk_config,
+                    const NetworkConfig& network_config,
                     int update_interval)
 {
     clear_screen();
     
     render_header();
     render_cpu(cpu, cpu_config);
-    render_memory(memory, memory_thresholds);
-    render_disks(disks, disk_thresholds);
+    render_memory(memory, memory_config);
+    render_disks(disks, disk_config);
     
     if (!network.empty()) {
-        render_network(network);
+        render_network(network, network_config);
     }
     
     render_alerts(active_alerts);
