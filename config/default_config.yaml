@@ -43,7 +43,7 @@ network:
 
 # Display Settings
 display:
-  color_scheme: "default"
+  color_scheme: "mono"
   refresh_rate: 1
   show_graphs: true
   graph_height: 10
