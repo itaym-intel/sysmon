@@ -124,7 +124,6 @@ std::string Display::create_graph(const std::deque<double>& data, int height) {
     double max_val = *std::max_element(data.begin(), data.end());
     if (max_val == 0.0) max_val = 1.0;
     
-    // Unicode block characters for different heights (actual UTF-8 characters)
     const char* blocks[] = {" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"};
     
     std::ostringstream oss;
@@ -160,7 +159,7 @@ void Display::render_header() {
 void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
     AlertLevel level = get_alert_level(cpu.overall_usage, cpu_config.thresholds);
     
-    std::cout << "[CPU]  ";
+    std::cout << "[CPU] " << cpu.model_name << "\n";
     std::cout << create_progress_bar(cpu.overall_usage, 20, level);
     std::cout << "  " << colorize(std::to_string(static_cast<int>(cpu.overall_usage)) + "%", level);
     std::cout << "  " << alert_icon(level);
@@ -193,7 +192,7 @@ void Display::render_cpu(const CpuMetrics& cpu, const CpuConfig& cpu_config) {
 void Display::render_memory(const MemoryMetrics& memory, const ThresholdConfig& thresholds) {
     AlertLevel level = get_alert_level(memory.usage_percent, thresholds);
     
-    std::cout << "[Memory]  ";
+    std::cout << "[Memory] " << memory.model_name << "\n";
     std::cout << create_progress_bar(memory.usage_percent, 20, level);
     std::cout << "  " << colorize(std::to_string(static_cast<int>(memory.usage_percent)) + "%", level);
     std::cout << " (" << format_bytes(memory.used_bytes) << " / " << format_bytes(memory.total_bytes) << ")";
@@ -215,8 +214,8 @@ void Display::render_disks(const std::vector<DiskMetrics>& disks, const Threshol
     for (const auto& disk : disks) {
         AlertLevel level = get_alert_level(disk.usage_percent, thresholds);
         
-        std::cout << "  " << std::setw(15) << std::left << (disk.label + " (" + disk.mount_point + ")");
-        std::cout << create_progress_bar(disk.usage_percent, 20, level);
+        std::cout << "  " << disk.label << " (" << disk.mount_point << ") - " << disk.model_name << "\n";
+        std::cout << "  " << create_progress_bar(disk.usage_percent, 20, level);
         std::cout << "  " << std::setw(3) << std::right << static_cast<int>(disk.usage_percent) << "%";
         std::cout << " (" << format_bytes(disk.used_bytes) << " / " << format_bytes(disk.total_bytes) << ")";
         std::cout << "  " << alert_icon(level);
@@ -229,10 +228,11 @@ void Display::render_network(const std::vector<NetworkMetrics>& network) {
     std::cout << "[Network]\n";
     
     for (const auto& net : network) {
-        std::cout << "  " << std::setw(20) << std::left << net.interface_name;
+        std::cout << "  " << net.interface_name << " - " << net.model_name << "\n";
+        std::cout << "    ";
         
         // Show download speed
-        std::cout << "     ↓" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
+        std::cout << "↓" << std::setw(5) << std::right << std::fixed << std::setprecision(2) 
                   << net.download_mbps << " Mbps";
         
         // Show upload speed
