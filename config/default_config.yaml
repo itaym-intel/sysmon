@@ -5,6 +5,9 @@ version: v1.0
 update_interval: 10
 history_size: 30
 
+# Debug logging
+debug_logging: false
+
 # CPU Monitoring
 cpu:
   enabled: true
@@ -43,7 +46,7 @@ network:
 
 # Display Settings
 display:
-  color_scheme: "default"
+  color_scheme: "mono"
   refresh_rate: 1
   show_graphs: true
   graph_height: 10

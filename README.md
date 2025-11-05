@@ -30,6 +30,7 @@ cpu:
     warning: 70.0
     critical: 90.0
   show_per_core: true
+  show_model_name: true
 
 memory:
   enabled: true
@@ -37,6 +38,7 @@ memory:
     warning: 80.0
     critical: 95.0
   show_swap: true
+  show_model_name: true
 
 disk:
   enabled: true
@@ -46,6 +48,7 @@ disk:
   mount_points:
     - path: "/"
       label: "Root"
+  show_model_name: true
 
 display:
   color_scheme: "default"  # default, mono

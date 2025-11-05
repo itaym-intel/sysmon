@@ -30,6 +30,7 @@ bool SystemMonitor::initialize() {
     
     // Initialize components
     metrics_collector_ = create_metrics_collector();
+    metrics_collector_->set_config(&config);  // Pass config for debug logging
     alert_engine_ = std::make_unique<AlertEngine>(config.alerts);
     display_ = std::make_unique<Display>(config.display);
     
