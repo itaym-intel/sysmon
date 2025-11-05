@@ -1,12 +1,19 @@
-#include "sysmon/metrics_collector.hpp"
-
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600  // Windows Vista or later for GetIfTable2
+#define _WIN32_WINNT 0x0600 
 #endif
 
-// winsock2.h MUST be included before windows.h to avoid conflicts
+#define _WINSOCKAPI_
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
+#include "sysmon/metrics_collector.hpp"
+#include "sysmon/config_manager.hpp"
+
 #include <windows.h>
 #include <psapi.h>
 #include <pdh.h>
@@ -28,7 +35,9 @@
 
 namespace sysmon {
 
-// Helper class for WMI queries
+// Initialize static member
+bool DebugLogger::enabled_ = false;
+
 class WMIHelper {
 public:
     WMIHelper() {
@@ -99,18 +108,17 @@ public:
     std::vector<std::string> query_multiple_properties(const wchar_t* wql_query, 
         const std::vector<const wchar_t*>& properties) {
         std::vector<std::string> results;
-        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] Starting query" << std::endl;
+        DebugLogger::log("WMIHelper::query_multiple_properties] Starting query");
         if (!services_) {
-            std::cerr << "[DEBUG WMIHelper::query_multiple_properties] services_ is NULL!" << std::endl;
+            DebugLogger::log("WMIHelper::query_multiple_properties] services_ is NULL!");
             return results;
         }
         IEnumWbemClassObject* enumerator = nullptr;
         HRESULT hr = services_->ExecQuery(bstr_t("WQL"), bstr_t(wql_query),
             WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, nullptr, &enumerator);
-        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] ExecQuery HRESULT: 0x"
-                  << std::hex << hr << std::dec << std::endl;
+        DebugLogger::log("WMIHelper::query_multiple_properties] ExecQuery HRESULT: 0x", std::hex, hr, std::dec);
         if (FAILED(hr) || !enumerator) {
-            std::cerr << "[DEBUG WMIHelper::query_multiple_properties] Query failed or enumerator is NULL" << std::endl;
+            DebugLogger::log("WMIHelper::query_multiple_properties] Query failed or enumerator is NULL");
             return results;
         }
         IWbemClassObject* obj = nullptr;
@@ -118,48 +126,48 @@ public:
         int object_count = 0;
         while (enumerator->Next(WBEM_INFINITE, 1, &obj, &returned) == WBEM_S_NO_ERROR) {
             object_count++;
-            std::cerr << "[DEBUG WMIHelper::query_multiple_properties] Processing object " << object_count << std::endl;
+            DebugLogger::log("WMIHelper::query_multiple_properties] Processing object ", object_count);
             for (const auto& prop : properties) {
                 VARIANT vtProp;
                 VariantInit(&vtProp);
                 hr = obj->Get(prop, 0, &vtProp, 0, 0);
-                std::cerr << "[DEBUG WMIHelper::query_multiple_properties] Property '" << (prop ? _bstr_t(prop) : L"(null)") << "' Get HRESULT: 0x"
-                          << std::hex << hr << std::dec << ", VT type: " << vtProp.vt << std::endl;
+                std::string prop_name = prop ? std::string((const char*)_bstr_t(prop)) : "(null)";
+                DebugLogger::log("WMIHelper::query_multiple_properties] Property '", prop_name, "' Get HRESULT: 0x", std::hex, hr, std::dec, ", VT type: ", vtProp.vt);
                 // Log value for all VT types
                 switch (vtProp.vt) {
                     case VT_BSTR:
                         if (vtProp.bstrVal) {
                             _bstr_t bstr(vtProp.bstrVal);
                             std::string value = (const char*)bstr;
-                            std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_BSTR value: '" << value << "'" << std::endl;
+                            DebugLogger::log("WMIHelper::query_multiple_properties] VT_BSTR value: '", value, "'");
                             results.push_back(value);
                         } else {
-                            std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_BSTR but value is NULL" << std::endl;
+                            DebugLogger::log("WMIHelper::query_multiple_properties] VT_BSTR but value is NULL");
                             results.push_back("");
                         }
                         break;
                     case VT_NULL:
-                        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_NULL" << std::endl;
+                        DebugLogger::log("WMIHelper::query_multiple_properties] VT_NULL");
                         results.push_back("");
                         break;
                     case VT_I4:
-                        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_I4 value: " << vtProp.lVal << std::endl;
+                        DebugLogger::log("WMIHelper::query_multiple_properties] VT_I4 value: ", vtProp.lVal);
                         results.push_back(std::to_string(vtProp.lVal));
                         break;
                     case VT_UI4:
-                        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_UI4 value: " << vtProp.ulVal << std::endl;
+                        DebugLogger::log("WMIHelper::query_multiple_properties] VT_UI4 value: ", vtProp.ulVal);
                         results.push_back(std::to_string(vtProp.ulVal));
                         break;
                     case VT_I8:
-                        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_I8 value: " << vtProp.llVal << std::endl;
+                        DebugLogger::log("WMIHelper::query_multiple_properties] VT_I8 value: ", vtProp.llVal);
                         results.push_back(std::to_string(vtProp.llVal));
                         break;
                     case VT_UI8:
-                        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] VT_UI8 value: " << vtProp.ullVal << std::endl;
+                        DebugLogger::log("WMIHelper::query_multiple_properties] VT_UI8 value: ", vtProp.ullVal);
                         results.push_back(std::to_string(vtProp.ullVal));
                         break;
                     default:
-                        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] Unhandled VT type: " << vtProp.vt << std::endl;
+                        DebugLogger::log("WMIHelper::query_multiple_properties] Unhandled VT type: ", vtProp.vt);
                         results.push_back("");
                         break;
                 }
@@ -167,7 +175,7 @@ public:
             }
             obj->Release();
         }
-        std::cerr << "[DEBUG WMIHelper::query_multiple_properties] Total objects (modules) found: " << object_count << std::endl;
+        DebugLogger::log("WMIHelper::query_multiple_properties] Total objects (modules) found: ", object_count);
         enumerator->Release();
         return results;
     }
@@ -214,6 +222,13 @@ public:
     ~WindowsMetricsCollector() {
         if (cpu_query_) {
             PdhCloseQuery(cpu_query_);
+        }
+    }
+    
+    void set_config(const SysMonConfig* config) override {
+        config_ = config;
+        if (config_) {
+            DebugLogger::set_enabled(config_->debug_logging);
         }
     }
     
@@ -365,6 +380,7 @@ private:
     std::string cpu_model_;
     std::string memory_model_;
     std::unique_ptr<WMIHelper> wmi_;
+    const SysMonConfig* config_ = nullptr;
     
     // Helper function to get CPU model using WMI (more reliable than registry)
     std::string get_cpu_model() {
@@ -405,27 +421,25 @@ private:
     // Helper function to get memory manufacturer/model using WMI
     std::string get_memory_model() {
         if (!wmi_) {
-            std::cerr << "[DEBUG] WMI not initialized for memory query\n";
+            DebugLogger::log("WMI not initialized for memory query");
             return "System Memory";
         }
-        std::cerr << "[DEBUG] Querying WMI for memory information...\n";
-        // Try more properties for diagnostics
+        DebugLogger::log("Querying WMI for memory information...");
+        
+        // First try traditional manufacturer/part number properties
         std::vector<const wchar_t*> props = {L"Manufacturer", L"PartNumber", L"BankLabel", L"SerialNumber"};
         auto results = wmi_->query_multiple_properties(
             L"SELECT Manufacturer, PartNumber, BankLabel, SerialNumber FROM Win32_PhysicalMemory",
             props);
-        std::cerr << "[DEBUG] WMI query returned " << results.size() << " results\n";
-        for (size_t i = 0; i < results.size(); ++i) {
-            std::cerr << "[DEBUG] Result[" << i << "]: '" << results[i] << "'\n";
-        }
+        DebugLogger::log("WMI query returned ", results.size(), " results");
+        
         // Try to build a model string from available info
-        std::string manufacturer, part_number, bank_label, serial_number;
+        std::string manufacturer, part_number;
         if (results.size() >= 4) {
             manufacturer = results[0];
             part_number = results[1];
-            bank_label = results[2];
-            serial_number = results[3];
         }
+        
         auto trim = [](std::string& s) {
             size_t start = s.find_first_not_of(" \t");
             size_t end = s.find_last_not_of(" \t");
@@ -433,32 +447,56 @@ private:
                 s = s.substr(start, end - start + 1);
             }
         };
+        
         trim(manufacturer);
         trim(part_number);
-        trim(bank_label);
-        trim(serial_number);
-        std::cerr << "[DEBUG] Trimmed manufacturer: '" << manufacturer << "'\n";
-        std::cerr << "[DEBUG] Trimmed part_number: '" << part_number << "'\n";
-        std::cerr << "[DEBUG] Trimmed bank_label: '" << bank_label << "'\n";
-        std::cerr << "[DEBUG] Trimmed serial_number: '" << serial_number << "'\n";
+        
         if (!manufacturer.empty() && !part_number.empty()) {
             std::string result = manufacturer + " " + part_number;
-            std::cerr << "[DEBUG] Returning: '" << result << "'\n";
+            DebugLogger::log("Returning: '", result, "'");
             return result;
         } else if (!manufacturer.empty()) {
             std::string result = manufacturer + " RAM";
-            std::cerr << "[DEBUG] Returning (manufacturer only): '" << result << "'\n";
-            return result;
-        } else if (!bank_label.empty()) {
-            std::string result = "Bank " + bank_label;
-            std::cerr << "[DEBUG] Returning (bank label only): '" << result << "'\n";
-            return result;
-        } else if (!serial_number.empty()) {
-            std::string result = "Serial " + serial_number;
-            std::cerr << "[DEBUG] Returning (serial number only): '" << result << "'\n";
+            DebugLogger::log("Returning (manufacturer only): '", result, "'");
             return result;
         }
-        std::cerr << "[DEBUG] Falling back to 'System Memory'\n";
+        
+        // If manufacturer/part number are empty, try fallback properties that usually have data
+        DebugLogger::log("Manufacturer/PartNumber empty, trying fallback properties");
+        std::vector<const wchar_t*> fallback_props = {L"Caption", L"Capacity", L"Speed", L"Tag"};
+        auto fallback_results = wmi_->query_multiple_properties(
+            L"SELECT Caption, Capacity, Speed, Tag FROM Win32_PhysicalMemory",
+            fallback_props);
+        
+        if (fallback_results.size() >= 4) {
+            std::string caption = fallback_results[0];
+            std::string capacity = fallback_results[1];
+            std::string speed = fallback_results[2];
+            std::string tag = fallback_results[3];
+            
+            trim(caption);
+            trim(capacity);
+            trim(speed);
+            trim(tag);
+            
+            DebugLogger::log("Fallback - Caption: '", caption, "'");
+            DebugLogger::log("Fallback - Capacity: '", capacity, "'"); 
+            DebugLogger::log("Fallback - Speed: '", speed, "'");
+            DebugLogger::log("Fallback - Tag: '", tag, "'");
+            
+            // Try to create a meaningful name from available data
+            if (!speed.empty() && speed != "0") {
+                std::string result = "DDR Memory " + speed + "MHz";
+                DebugLogger::log("Returning (fallback speed): '", result, "'");
+                return result;
+            } else if (!caption.empty() && caption != "Physical Memory") {
+                std::string result = caption;
+                DebugLogger::log("Returning (fallback caption): '", result, "'");
+                return result;
+            }
+        }
+        
+        DebugLogger::log("Falling back to 'System Memory'");
         return "System Memory";
     }
     
