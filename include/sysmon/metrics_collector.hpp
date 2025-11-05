@@ -4,8 +4,28 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <iostream>
 
 namespace sysmon {
+
+struct SysMonConfig;
+class DebugLogger {
+public:
+    static void set_enabled(bool enabled) { enabled_ = enabled; }
+    static bool is_enabled() { return enabled_; }
+    
+    template<typename... Args>
+    static void log(Args&&... args) {
+        if (enabled_) {
+            std::cerr << "[DEBUG] ";
+            ((std::cerr << args), ...);
+            std::cerr << std::endl;
+        }
+    }
+    
+private:
+    static bool enabled_;
+};
 
 struct CpuMetrics {
     double overall_usage = 0.0;              // 0-100%
@@ -46,6 +66,9 @@ struct NetworkMetrics {
 class MetricsCollector {
 public:
     virtual ~MetricsCollector() = default;
+    
+    // Set config for debug logging
+    virtual void set_config(const SysMonConfig* config) = 0;
     
     virtual CpuMetrics collect_cpu() = 0;
     virtual MemoryMetrics collect_memory() = 0;

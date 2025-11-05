@@ -56,7 +56,7 @@ struct MemoryConfig {
 struct MountPointConfig {
     std::string path;
     std::string label;
-    ThresholdConfig thresholds;  // Now required, not optional
+    ThresholdConfig thresholds;  // required
     
     TYPICONF_DEFINE_FIELDS(MountPointConfig,
         TYPICONF_FIELD(path),
@@ -127,6 +127,7 @@ struct SysMonConfig {
     std::string version = "1.0";
     int update_interval = 2;
     int history_size = 30;
+    bool debug_logging = false;  // debug option
     CpuConfig cpu;
     MemoryConfig memory;
     DiskConfig disk;
@@ -140,6 +141,7 @@ struct SysMonConfig {
         TYPICONF_FIELD(version),
         TYPICONF_FIELD(update_interval),
         TYPICONF_FIELD(history_size),
+        TYPICONF_FIELD(debug_logging),
         TYPICONF_FIELD(cpu),
         TYPICONF_FIELD(memory),
         TYPICONF_FIELD(disk),
@@ -153,16 +155,10 @@ class ConfigManager {
 public:
     explicit ConfigManager(const std::string& config_path);
     
-    // Load configuration
-    bool load();
-    
-    // Reload if file changed (hot-reload)
+    bool load(); // load + hot-reload
     bool check_and_reload();
     
-    // Access configuration
     const SysMonConfig& get_config() const { return config_; }
-    
-    // Validation
     bool validate_config(std::string& error_msg) const;
 
 private:
