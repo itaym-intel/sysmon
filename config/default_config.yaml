@@ -5,6 +5,9 @@ version: v1.0
 update_interval: 10
 history_size: 30
 
+# Debug logging
+debug_logging: false
+
 # CPU Monitoring
 cpu:
   enabled: true
