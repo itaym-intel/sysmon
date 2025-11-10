@@ -1,4 +1,5 @@
 #include "sysmon/metrics_collector.hpp"
+#include "sysmon/config_manager.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -8,17 +9,32 @@
 
 namespace sysmon {
 
+// Initialize static member
+bool DebugLogger::enabled_ = false;
+
 class LinuxMetricsCollector : public MetricsCollector {
 public:
     LinuxMetricsCollector() {
         core_count_ = sysconf(_SC_NPROCESSORS_ONLN);
         // Get initial CPU stats
         read_cpu_stats(prev_total_, prev_idle_);
+        
+        // Get hardware model names (cache them)
+        cpu_model_ = get_cpu_model();
+        memory_model_ = get_memory_model();
+    }
+    
+    void set_config(const SysMonConfig* config) override {
+        config_ = config;
+        if (config_) {
+            DebugLogger::set_enabled(config_->debug_logging);
+        }
     }
     
     CpuMetrics collect_cpu() override {
         CpuMetrics metrics;
         metrics.core_count = core_count_;
+        metrics.model_name = cpu_model_;
         
         // Read current stats
         unsigned long long total, idle;
@@ -60,6 +76,7 @@ public:
     
     MemoryMetrics collect_memory() override {
         MemoryMetrics metrics;
+        metrics.model_name = memory_model_;
         
         std::ifstream meminfo("/proc/meminfo");
         std::string line;
@@ -101,6 +118,7 @@ public:
             DiskMetrics disk;
             disk.mount_point = mount_point;
             disk.label = mount_point;
+            disk.model_name = get_disk_model(mount_point);
             
             struct statvfs stat;
             if (statvfs(mount_point.c_str(), &stat) == 0) {
@@ -160,6 +178,7 @@ public:
             net.interface_name = if_name;
             net.bytes_received = rx_bytes;
             net.bytes_sent = tx_bytes;
+            net.model_name = get_network_model(if_name);
             
             network_metrics.push_back(net);
         }
@@ -182,9 +201,127 @@ private:
         idle = idle_val + iowait;
     }
     
+    // Helper function to get CPU model from /proc/cpuinfo
+    std::string get_cpu_model() {
+        std::ifstream cpuinfo("/proc/cpuinfo");
+        std::string line;
+        
+        while (std::getline(cpuinfo, line)) {
+            if (line.find("model name") != std::string::npos) {
+                size_t colon_pos = line.find(':');
+                if (colon_pos != std::string::npos) {
+                    std::string model = line.substr(colon_pos + 1);
+                    // Trim leading/trailing spaces
+                    size_t start = model.find_first_not_of(" \t");
+                    size_t end = model.find_last_not_of(" \t");
+                    if (start != std::string::npos) {
+                        return model.substr(start, end - start + 1);
+                    }
+                }
+                break;
+            }
+        }
+        return "Unknown CPU";
+    }
+    
+    // Helper function to get memory model/manufacturer
+    std::string get_memory_model() {
+        // Try to get memory information from dmidecode (requires root/sudo)
+        // For non-root users, we'll provide a generic description
+        std::ifstream dmidecode_check("/sys/firmware/dmi/tables/DMI");
+        if (!dmidecode_check.good()) {
+            return "System Memory";
+        }
+        
+        // Try reading DMI information from sysfs
+        std::ifstream dmi_type("/sys/firmware/dmi/entries/17-0/raw");
+        if (dmi_type.good()) {
+            // DMI type 17 is Memory Device, but parsing raw DMI is complex
+            // For simplicity, return a generic name
+            return "System Memory";
+        }
+        
+        return "System Memory";
+    }
+    
+    // Helper function to get disk model for a mount point
+    std::string get_disk_model(const std::string& mount_point) {
+        // Find the device for this mount point
+        std::ifstream mounts("/proc/mounts");
+        std::string line;
+        std::string device;
+        
+        while (std::getline(mounts, line)) {
+            std::istringstream iss(line);
+            std::string dev, mnt;
+            iss >> dev >> mnt;
+            
+            if (mnt == mount_point) {
+                device = dev;
+                break;
+            }
+        }
+        
+        if (device.empty() || device.find("/dev/") != 0) {
+            return "Unknown Drive";
+        }
+        
+        // Extract the base device name (e.g., sda from /dev/sda1)
+        std::string base_device = device.substr(5); // Remove "/dev/"
+        // Remove partition number if present
+        while (!base_device.empty() && std::isdigit(base_device.back())) {
+            base_device.pop_back();
+        }
+        
+        // Try to read model from /sys/block/*/device/model
+        std::string model_path = "/sys/block/" + base_device + "/device/model";
+        std::ifstream model_file(model_path);
+        if (model_file.good()) {
+            std::string model;
+            std::getline(model_file, model);
+            // Trim spaces
+            size_t start = model.find_first_not_of(" \t");
+            size_t end = model.find_last_not_of(" \t");
+            if (start != std::string::npos) {
+                return model.substr(start, end - start + 1);
+            }
+        }
+        
+        return "Unknown Drive";
+    }
+    
+    // Helper function to get network adapter model
+    std::string get_network_model(const std::string& interface_name) {
+        // Try to read from /sys/class/net/<interface>/device/modalias or uevent
+        std::string device_path = "/sys/class/net/" + interface_name + "/device/uevent";
+        std::ifstream uevent_file(device_path);
+        
+        if (uevent_file.good()) {
+            std::string line;
+            std::string driver, pci_id;
+            
+            while (std::getline(uevent_file, line)) {
+                if (line.find("DRIVER=") == 0) {
+                    driver = line.substr(7);
+                } else if (line.find("PCI_ID=") == 0) {
+                    pci_id = line.substr(7);
+                }
+            }
+            
+            if (!driver.empty()) {
+                return driver + " Network Adapter";
+            }
+        }
+        
+        return interface_name + " Adapter";
+    }
+    
     uint32_t core_count_;
     unsigned long long prev_total_ = 0;
     unsigned long long prev_idle_ = 0;
+    std::string cpu_model_;
+    std::string memory_model_;
+    const SysMonConfig* config_ = nullptr;
 };
 
 std::unique_ptr<MetricsCollector> create_linux_metrics_collector() {
