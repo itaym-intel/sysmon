@@ -9,7 +9,7 @@ cd sysmon
 
 mkdir build && cd build
 
-cmake .. # see cmakelists
+cmake .. -DSYSMON_BUILD_TESTS=OFF # see cmakelists
 cmake --build . --config Release
 
 ./sysmon
