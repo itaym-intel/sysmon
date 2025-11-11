@@ -35,7 +35,6 @@
 
 namespace sysmon {
 
-// Initialize static member
 bool DebugLogger::enabled_ = false;
 
 class WMIHelper {
@@ -133,7 +132,7 @@ public:
                 hr = obj->Get(prop, 0, &vtProp, 0, 0);
                 std::string prop_name = prop ? std::string((const char*)_bstr_t(prop)) : "(null)";
                 DebugLogger::log("WMIHelper::query_multiple_properties] Property '", prop_name, "' Get HRESULT: 0x", std::hex, hr, std::dec, ", VT type: ", vtProp.vt);
-                // Log value for all VT types
+
                 switch (vtProp.vt) {
                     case VT_BSTR:
                         if (vtProp.bstrVal) {
@@ -189,21 +188,18 @@ private:
 class WindowsMetricsCollector : public MetricsCollector {
 public:
     WindowsMetricsCollector() {
-        // Initialize WMI
         wmi_ = std::make_unique<WMIHelper>();
         
-        // Initialize PDH for CPU monitoring
-        PdhOpenQuery(nullptr, 0, &cpu_query_);
+        PdhOpenQuery(nullptr, 0, &cpu_query_); // Initialize PDH for CPU monitoring
         PdhAddEnglishCounterW(cpu_query_, L"\\Processor(_Total)\\% Processor Time", 0, &cpu_total_);
         PdhCollectQueryData(cpu_query_);
         
-        // Get number of logical processors (threads, including hyperthreading)
+        // Get number of logical processors (btw sometimes just called cores)
         SYSTEM_INFO sysInfo;
         GetSystemInfo(&sysInfo);
         core_count_ = sysInfo.dwNumberOfProcessors;
         
-        // Add per-thread counters
-        for (DWORD i = 0; i < core_count_; ++i) {
+        for (DWORD i = 0; i < core_count_; ++i) { // Per-core counters
             PDH_HCOUNTER counter;
             std::wstring path = L"\\Processor(" + std::to_wstring(i) + L")\\% Processor Time";
             if (PdhAddEnglishCounterW(cpu_query_, path.c_str(), 0, &counter) == ERROR_SUCCESS) {
@@ -213,8 +209,8 @@ public:
         
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         PdhCollectQueryData(cpu_query_);
-        
-        // Get hardware model names using WMI (cache them)
+
+        // Cache hardware model names using WMI
         cpu_model_ = get_cpu_model();
         memory_model_ = get_memory_model();
     }
@@ -239,14 +235,12 @@ public:
         
         PdhCollectQueryData(cpu_query_);
         
-        // Total CPU usage
-        PDH_FMT_COUNTERVALUE counterVal;
+        PDH_FMT_COUNTERVALUE counterVal; // total
         if (PdhGetFormattedCounterValue(cpu_total_, PDH_FMT_DOUBLE, nullptr, &counterVal) == ERROR_SUCCESS) {
             metrics.overall_usage = counterVal.doubleValue;
         }
         
-        // per (logical) core usage
-        for (auto& counter : cpu_cores_) {
+        for (auto& counter : cpu_cores_) { // per core
             if (PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, nullptr, &counterVal) == ERROR_SUCCESS) {
                 metrics.per_core_usage.push_back(counterVal.doubleValue);
             }
@@ -267,7 +261,6 @@ public:
             metrics.used_bytes = metrics.total_bytes - metrics.available_bytes;
             metrics.usage_percent = static_cast<double>(metrics.used_bytes) / metrics.total_bytes * 100.0;
             
-            // Windows uses page file instead of traditional swap
             metrics.swap_total_bytes = memInfo.ullTotalPageFile - memInfo.ullTotalPhys;
             metrics.swap_used_bytes = (memInfo.ullTotalPageFile - memInfo.ullAvailPageFile) - metrics.used_bytes;
         }
